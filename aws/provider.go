@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/terraform-providers/terraform-provider-aws/structprovider"
 )
 
 // Provider returns a terraform.ResourceProvider.
@@ -164,7 +165,7 @@ func Provider() terraform.ResourceProvider {
 			"aws_ami":                        dataSourceAwsAmi(),
 			"aws_ami_ids":                    dataSourceAwsAmiIds(),
 			"aws_autoscaling_groups":         dataSourceAwsAutoscalingGroups(),
-			"aws_availability_zone":          dataSourceAwsAvailabilityZone(),
+			"aws_availability_zone":          structprovider.NewDataSource((*DataSourceAvailabilityZone)(nil)),
 			"aws_availability_zones":         dataSourceAwsAvailabilityZones(),
 			"aws_billing_service_account":    dataSourceAwsBillingServiceAccount(),
 			"aws_caller_identity":            dataSourceAwsCallerIdentity(),
