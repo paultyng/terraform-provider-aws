@@ -6,51 +6,31 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func dataSourceAwsAvailabilityZone() *schema.Resource {
-	return &schema.Resource{
-		Read: dataSourceAwsAvailabilityZoneRead,
-
-		Schema: map[string]*schema.Schema{
-			"name": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-
-			"region": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			"name_suffix": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			"state": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-		},
-	}
+type DataSourceAvailabilityZone struct {
+	Name       string `tf:",optional,computed"`
+	Region     string `tf:",computed"`
+	NameSuffix string `tf:",computed"`
+	State      string `tf:",optional,computed"`
 }
 
-func dataSourceAwsAvailabilityZoneRead(d *schema.ResourceData, meta interface{}) error {
+func (ds *DataSourceAvailabilityZone) ID() string {
+	return ds.Name
+}
+
+func (ds *DataSourceAvailabilityZone) Read(meta interface{}) error {
 	conn := meta.(*AWSClient).ec2conn
 
 	req := &ec2.DescribeAvailabilityZonesInput{}
 
-	if name := d.Get("name"); name != "" {
-		req.ZoneNames = []*string{aws.String(name.(string))}
+	if ds.Name != "" {
+		req.ZoneNames = []*string{aws.String(ds.Name)}
 	}
 
 	req.Filters = buildEC2AttributeFilterList(
 		map[string]string{
-			"state": d.Get("state").(string),
+			"state": ds.State,
 		},
 	)
 	if len(req.Filters) == 0 {
@@ -72,17 +52,15 @@ func dataSourceAwsAvailabilityZoneRead(d *schema.ResourceData, meta interface{})
 
 	az := resp.AvailabilityZones[0]
 
+	ds.Name = *az.ZoneName
+	ds.Region = *az.RegionName
+	ds.State = *az.State
+
 	// As a convenience when working with AZs generically, we expose
 	// the AZ suffix alone, without the region name.
 	// This can be used e.g. to create lookup tables by AZ letter that
 	// work regardless of region.
-	nameSuffix := (*az.ZoneName)[len(*az.RegionName):]
-
-	d.SetId(*az.ZoneName)
-	d.Set("name", az.ZoneName)
-	d.Set("name_suffix", nameSuffix)
-	d.Set("region", az.RegionName)
-	d.Set("state", az.State)
+	ds.NameSuffix = ds.Name[len(ds.Region):]
 
 	return nil
 }

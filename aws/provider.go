@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/terraform-providers/terraform-provider-aws/structprovider"
 )
 
 // Provider returns a terraform.ResourceProvider.
@@ -164,7 +165,7 @@ func Provider() terraform.ResourceProvider {
 			"aws_ami":                        dataSourceAwsAmi(),
 			"aws_ami_ids":                    dataSourceAwsAmiIds(),
 			"aws_autoscaling_groups":         dataSourceAwsAutoscalingGroups(),
-			"aws_availability_zone":          dataSourceAwsAvailabilityZone(),
+			"aws_availability_zone":          structprovider.NewDataSource((*DataSourceAvailabilityZone)(nil)),
 			"aws_availability_zones":         dataSourceAwsAvailabilityZones(),
 			"aws_billing_service_account":    dataSourceAwsBillingServiceAccount(),
 			"aws_caller_identity":            dataSourceAwsCallerIdentity(),
@@ -266,7 +267,7 @@ func Provider() terraform.ResourceProvider {
 			"aws_appautoscaling_target":                    resourceAwsAppautoscalingTarget(),
 			"aws_appautoscaling_policy":                    resourceAwsAppautoscalingPolicy(),
 			"aws_appautoscaling_scheduled_action":          resourceAwsAppautoscalingScheduledAction(),
-			"aws_athena_database":                          resourceAwsAthenaDatabase(),
+			"aws_athena_database":                          structprovider.NewResource((*AthenaDatabase)(nil)),
 			"aws_athena_named_query":                       resourceAwsAthenaNamedQuery(),
 			"aws_autoscaling_attachment":                   resourceAwsAutoscalingAttachment(),
 			"aws_autoscaling_group":                        resourceAwsAutoscalingGroup(),
