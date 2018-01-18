@@ -8,43 +8,25 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/athena"
 	"github.com/hashicorp/terraform/helper/resource"
-	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func resourceAwsAthenaDatabase() *schema.Resource {
-	return &schema.Resource{
-		Create: resourceAwsAthenaDatabaseCreate,
-		Read:   resourceAwsAthenaDatabaseRead,
-		Update: resourceAwsAthenaDatabaseUpdate,
-		Delete: resourceAwsAthenaDatabaseDelete,
-
-		Schema: map[string]*schema.Schema{
-			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
-			"bucket": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
-			"force_destroy": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-			},
-		},
-	}
+type AthenaDatabase struct {
+	Name         string `tf:",required,forcenew"`
+	Bucket       string `tf:",required,forcenew"`
+	ForceDestroy bool   `tf:",optional"`
 }
 
-func resourceAwsAthenaDatabaseCreate(d *schema.ResourceData, meta interface{}) error {
+func (r *AthenaDatabase) ID() string {
+	return r.Name
+}
+
+func (r *AthenaDatabase) Create(meta interface{}) error {
 	conn := meta.(*AWSClient).athenaconn
 
 	input := &athena.StartQueryExecutionInput{
-		QueryString: aws.String(fmt.Sprintf("create database %s;", d.Get("name").(string))),
+		QueryString: aws.String(fmt.Sprintf("create database %s;", r.Name)),
 		ResultConfiguration: &athena.ResultConfiguration{
-			OutputLocation: aws.String("s3://" + d.Get("bucket").(string)),
+			OutputLocation: aws.String("s3://" + r.Bucket),
 		},
 	}
 
@@ -53,17 +35,16 @@ func resourceAwsAthenaDatabaseCreate(d *schema.ResourceData, meta interface{}) e
 		return err
 	}
 
-	if err := executeAndExpectNoRowsWhenCreate(*resp.QueryExecutionId, d, conn); err != nil {
+	if err := executeAndExpectNoRowsWhenCreate(*resp.QueryExecutionId, conn); err != nil {
 		return err
 	}
-	d.SetId(d.Get("name").(string))
-	return resourceAwsAthenaDatabaseRead(d, meta)
+	return nil
 }
 
-func resourceAwsAthenaDatabaseRead(d *schema.ResourceData, meta interface{}) error {
+func (r *AthenaDatabase) Read(meta interface{}) error {
 	conn := meta.(*AWSClient).athenaconn
 
-	bucket := d.Get("bucket").(string)
+	bucket := r.Bucket
 	input := &athena.StartQueryExecutionInput{
 		QueryString: aws.String(fmt.Sprint("show databases;")),
 		ResultConfiguration: &athena.ResultConfiguration{
@@ -76,24 +57,24 @@ func resourceAwsAthenaDatabaseRead(d *schema.ResourceData, meta interface{}) err
 		return err
 	}
 
-	if err := executeAndExpectMatchingRow(*resp.QueryExecutionId, d.Get("name").(string), conn); err != nil {
+	if err := executeAndExpectMatchingRow(*resp.QueryExecutionId, r.Name, conn); err != nil {
 		return err
 	}
 	return nil
 }
 
-func resourceAwsAthenaDatabaseUpdate(d *schema.ResourceData, meta interface{}) error {
-	return resourceAwsAthenaDatabaseRead(d, meta)
+func (r *AthenaDatabase) Update(meta interface{}) error {
+	return nil
 }
 
-func resourceAwsAthenaDatabaseDelete(d *schema.ResourceData, meta interface{}) error {
+func (r *AthenaDatabase) Delete(meta interface{}) error {
 	conn := meta.(*AWSClient).athenaconn
 
-	name := d.Get("name").(string)
-	bucket := d.Get("bucket").(string)
+	name := r.Name
+	bucket := r.Bucket
 
 	queryString := fmt.Sprintf("drop database %s", name)
-	if d.Get("force_destroy").(bool) {
+	if r.ForceDestroy {
 		queryString += " cascade"
 	}
 	queryString += ";"
@@ -110,13 +91,13 @@ func resourceAwsAthenaDatabaseDelete(d *schema.ResourceData, meta interface{}) e
 		return err
 	}
 
-	if err := executeAndExpectNoRowsWhenDrop(*resp.QueryExecutionId, d, conn); err != nil {
+	if err := executeAndExpectNoRowsWhenDrop(*resp.QueryExecutionId, conn); err != nil {
 		return err
 	}
 	return nil
 }
 
-func executeAndExpectNoRowsWhenCreate(qeid string, d *schema.ResourceData, conn *athena.Athena) error {
+func executeAndExpectNoRowsWhenCreate(qeid string, conn *athena.Athena) error {
 	rs, err := queryExecutionResult(qeid, conn)
 	if err != nil {
 		return err
@@ -142,7 +123,7 @@ func executeAndExpectMatchingRow(qeid string, dbName string, conn *athena.Athena
 	return fmt.Errorf("[ERROR] Athena not found database: %s, query result: %s", dbName, flattenAthenaResultSet(rs))
 }
 
-func executeAndExpectNoRowsWhenDrop(qeid string, d *schema.ResourceData, conn *athena.Athena) error {
+func executeAndExpectNoRowsWhenDrop(qeid string, conn *athena.Athena) error {
 	rs, err := queryExecutionResult(qeid, conn)
 	if err != nil {
 		return err

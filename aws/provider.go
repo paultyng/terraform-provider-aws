@@ -267,7 +267,7 @@ func Provider() terraform.ResourceProvider {
 			"aws_appautoscaling_target":                    resourceAwsAppautoscalingTarget(),
 			"aws_appautoscaling_policy":                    resourceAwsAppautoscalingPolicy(),
 			"aws_appautoscaling_scheduled_action":          resourceAwsAppautoscalingScheduledAction(),
-			"aws_athena_database":                          resourceAwsAthenaDatabase(),
+			"aws_athena_database":                          structprovider.NewResource((*AthenaDatabase)(nil)),
 			"aws_athena_named_query":                       resourceAwsAthenaNamedQuery(),
 			"aws_autoscaling_attachment":                   resourceAwsAutoscalingAttachment(),
 			"aws_autoscaling_group":                        resourceAwsAutoscalingGroup(),
